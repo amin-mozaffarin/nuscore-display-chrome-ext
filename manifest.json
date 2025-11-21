@@ -3,6 +3,11 @@
   "name": "nuScore Display",
   "version": "1.0",
   "description": "Extracts the score and pushs it to a display.",
+  "permissions": ["storage"],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
   "content_scripts": [
     {
       "matches": ["https://ttde-apps.liga.nu/nuliga/nuscore-tt/*/score-sheet"],

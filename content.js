@@ -1,8 +1,29 @@
 // CONFIGURATION: Change this to the ID you want to watch
-const TARGET_ELEMENT_ID = "scoreRow"; 
-const API_ENDPOINT = "http://192.168.178.35/api/notify";
+const TARGET_ELEMENT_ID = "scoreRow";
+const DEFAULT_DISPLAY_IP = "192.168.4.1"
 
-console.log(`Score Extractor: Watching for #${TARGET_ELEMENT_ID}...`);
+let currentDisplayIP =  DEFAULT_DISPLAY_IP;
+
+console.log(`[ScoreExtractor]: Initializing...`);
+
+// 1. Load the API Endpoint from storage on startup
+chrome.storage.sync.get({
+  displayIP: DEFAULT_DISPLAY_IP
+}, (items) => {
+  currentDisplayIP = items.displayIP;
+  console.log(`[ScoreExtractor] Display IP set to: ${currentDisplayIP}`);
+  // Run initial extraction only after we have the endpoint
+  extractAndLog();
+});
+
+// 2. Listen for changes in options
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (changes.displayIP) {
+    currentDisplayIP = changes.displayIP.newValue;
+    console.log(`[ScoreExtractor] Display IP updated to: ${currentDisplayIP}`);
+    extractAndLog();
+  }
+});
 
 let lastScore = ""; // Used to prevent sending duplicate data
 
@@ -29,7 +50,7 @@ function extractAndLog() {
     const currentScore = score;
     
     if (currentScore !== lastScore) {
-      console.log(`[Extractor] New score detected:`, score);
+      console.log(`[ScoreExtractor] New score detected:`, score);
       
       // Update cache
       lastScore = currentScore;
@@ -37,10 +58,10 @@ function extractAndLog() {
       // Send to server
       sendData(score);
     } else {
-      console.log(`[Extractor] Score not changed`)
+      console.log(`[ScoreExtractor] Score not changed`)
     }
   } else {
-    console.log(`[Extractor] #${TARGET_ELEMENT_ID} exists but contains no score.`);
+    console.log(`[ScoreExtractor] #${TARGET_ELEMENT_ID} exists but contains no score.`);
   }
 }
 
@@ -54,6 +75,8 @@ function sendData(score) {
     stack: false,
   };
 
+  const API_ENDPOINT = `http://${currentDisplayIP}/api/notify`
+
   fetch(API_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -63,13 +86,13 @@ function sendData(score) {
   })
   .then(response => {
     if (response.ok) {
-      console.log(`[Extractor] Successfully posted data to ${API_ENDPOINT} -->`, score);
+      console.log(`[ScoreExtractor] Successfully posted data to ${currentDisplayIP} -->`, score);
     } else {
-      console.error(`[Extractor] API Error: ${response.status} ${response.statusText}`);
+      console.error(`[ScoreExtractor] API Error: ${response.status} ${response.statusText}`);
     }
   })
   .catch(error => {
-    console.error(`[Extractor] Network Error:`, error);
+    console.error(`[ScoreExtractor] Network Error:`, error);
   });
 }
 
