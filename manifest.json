@@ -5,7 +5,7 @@
   "description": "Extracts the score and pushs it to a display.",
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["https://ttde-apps.liga.nu/nuliga/nuscore-tt/*/score-sheet"],
       "js": ["content.js"]
     }
   ]

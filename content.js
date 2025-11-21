@@ -36,7 +36,9 @@ function extractAndLog() {
       
       // Send to server
       sendData(score);
-    }    
+    } else {
+      console.log(`[Extractor] Score not changed`)
+    }
   } else {
     console.log(`[Extractor] #${TARGET_ELEMENT_ID} exists but contains no score.`);
   }
@@ -61,7 +63,7 @@ function sendData(score) {
   })
   .then(response => {
     if (response.ok) {
-      console.log(`[Extractor] Successfully posted data to ${API_ENDPOINT}`);
+      console.log(`[Extractor] Successfully posted data to ${API_ENDPOINT} -->`, score);
     } else {
       console.error(`[Extractor] API Error: ${response.status} ${response.statusText}`);
     }
