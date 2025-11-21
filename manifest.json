@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "nuScore Display",
+  "version": "1.0",
+  "description": "Extracts the score and pushs it to a display.",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
