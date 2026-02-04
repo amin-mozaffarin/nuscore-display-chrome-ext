@@ -3,12 +3,11 @@ const DEFAULT_DISPLAY_IP = "192.168.4.1"
 const DB_NAME = "nuDB";
 const STORE_NAME = "meetingMatches";
 const POLL_INTERVAL = 1 * 1000;
+const DISPLAY_TIMEOUT = 1 * 1000;
 
 let currentDisplayIP =  DEFAULT_DISPLAY_IP;
 
 console.log(`[ScoreExtractor] Initializing...`);
-
-let lastScore = "";
 
 function getMeetingUuidFromUrl() {
     const meetingUuid = location.pathname.split('/')[4]
@@ -18,7 +17,7 @@ function getMeetingUuidFromUrl() {
 async function pollDatabase() {
     const meetingUuid = getMeetingUuidFromUrl();
     if (!meetingUuid) {
-      sendData('- : -')
+      await sendData('- : -')
       return
     };
 
@@ -34,7 +33,7 @@ async function pollDatabase() {
         const store = transaction.objectStore(STORE_NAME);
         const getAllRequest = store.getAll();
 
-        getAllRequest.onsuccess = () => {
+        getAllRequest.onsuccess = async () => {
             const allMatches = getAllRequest.result;
             const matches = allMatches.filter(match => match.nuLigaMeetingUuid === meetingUuid);
             
@@ -42,7 +41,7 @@ async function pollDatabase() {
             let matchesB = 0
             const completedMatches = matches.filter(match => match.isCompleted)
             if (completedMatches.length === 0) {
-              sendData('0 : 0')
+              await sendData('0 : 0')
               return
             }
 
@@ -52,7 +51,7 @@ async function pollDatabase() {
             });
 
             const score = `${matchesA} : ${matchesB}`
-            sendData(score);
+            await sendData(score);
         };
     };
 }
@@ -77,15 +76,8 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 });
 
 // Sends the extracted data to the configured API endpoint
-function sendData(score) {
-  if (score === lastScore) {
-    console.log(`[ScoreExtractor] score ${score} not changed --> no display update`)
-    return
-  }
-
-  lastScore = score
-
-  console.log(`[ScoreExtractor] sending new score ${score} to display and overwrite footer...`)
+async function sendData(score) {
+  console.log(`[ScoreExtractor] sending score ${score} to display ${currentDisplayIP} and overwrite footer...`)
   overwriteFooter(score)
 
   const payload = {
@@ -96,27 +88,26 @@ function sendData(score) {
 
   const API_ENDPOINT = `http://${currentDisplayIP}/api/notify`
 
-  fetch(API_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
-  .then(response => {
-    if (response.ok) {
-      console.log(`[ScoreExtractor] Successfully posted data to ${currentDisplayIP} -->`, score);
-    } else {
-      console.error(`[ScoreExtractor] API Error: ${response.status} ${response.statusText}`);
-    }
-  })
-  .catch(error => {
-    console.error(`[ScoreExtractor] Network Error:`, error);
-  });
+  const abortController = new AbortController();
+  const timerId = setTimeout(() => abortController.abort(), DISPLAY_TIMEOUT);
+
+  try {
+    await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: abortController.signal,
+    })
+    clearTimeout(timerId)
+    console.log(`[ScoreExtractor] Display successfully updated to ${score}`);
+  } catch(err) {
+    console.error(`[ScoreExtractor] Display update failed`);
+  }
 }
 
 function overwriteFooter(score) {
-  console.log(`[ScoreExtractor] Overwrite footer`)
   const element = document.querySelector('#scoreRow span');
 
   if (!element) {
